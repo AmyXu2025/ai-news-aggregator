@@ -1,0 +1,41 @@
+name: Daily AI News
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  generate-news:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Setup proxy for translation
+        run: |
+          echo "Checking if proxy is needed..."
+          npm install
+
+      - name: Generate daily news
+        env:
+          HTTP_PROXY: ${{ secrets.PROXY_URL }}
+          HTTPS_PROXY: ${{ secrets.PROXY_URL }}
+        run: npx tsx src/index.ts
+
+      - name: Commit and push news
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "GitHub Actions"
+          git add Output/
+          git diff --staged --quiet || git commit -m "Update AI News - $(date +'%Y-%m-%d')"
+          git push

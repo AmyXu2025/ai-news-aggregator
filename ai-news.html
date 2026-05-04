@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI新闻日报</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    header h1 {
+      color: white;
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+
+    header p {
+      color: rgba(255,255,255,0.9);
+      font-size: 1.1rem;
+    }
+
+    .news-card {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      margin-bottom: 20px;
+    }
+
+    .news-card h2 {
+      color: #333;
+      font-size: 1.3rem;
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+
+    .news-item {
+      padding: 20px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .news-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .news-item:first-child {
+      padding-top: 0;
+    }
+
+    .news-title {
+      color: #1a1a2e;
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    .news-title a {
+      color: #667eea;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .news-title a:hover {
+      color: #764ba2;
+    }
+
+    .news-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .news-meta span {
+      display: flex;
+      align-items: center;
+    }
+
+    .news-meta .source {
+      background: #667eea;
+      color: white;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+    }
+
+    .news-meta .date {
+      color: #888;
+    }
+
+    .news-description {
+      color: #555;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-top: 8px;
+    }
+
+    .loading {
+      text-align: center;
+      color: white;
+      font-size: 1.2rem;
+      padding: 40px;
+    }
+
+    .error {
+      background: #fee;
+      color: #c33;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 30px;
+      color: white;
+      text-decoration: none;
+      font-size: 0.95rem;
+      opacity: 0.9;
+      transition: opacity 0.2s;
+    }
+
+    .back-link:hover {
+      opacity: 1;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      color: rgba(255,255,255,0.7);
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 600px) {
+      header h1 {
+        font-size: 1.8rem;
+      }
+
+      .news-card {
+        padding: 20px;
+      }
+
+      .news-meta {
+        flex-direction: column;
+        gap: 5px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🤖 AI新闻日报</h1>
+      <p id="date"></p>
+    </header>
+
+    <div id="content">
+      <div class="loading">正在加载今日新闻...</div>
+    </div>
+
+    <footer>
+      <p>每日自动更新 | 数据来源: TechCrunch AI, Hacker News AI, 量子位</p>
+    </footer>
+  </div>
+
+  <script>
+    async function loadNews() {
+      const contentDiv = document.getElementById('content');
+      const dateDiv = document.getElementById('date');
+
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        dateDiv.textContent = `📅 ${today}`;
+
+        const response = await fetch(`./Output/ai-news-daily-${today}.md?t=${Date.now()}`);
+
+        if (!response.ok) {
+          throw new Error('今天的新闻尚未生成');
+        }
+
+        const markdown = await response.text();
+
+        const lines = markdown.split('\n');
+        let html = '';
+        let inNews = false;
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+
+          if (line.startsWith('## ')) {
+            if (inNews) {
+              html += '</div>';
+            }
+            const title = line.substring(3).trim();
+            const parts = title.split('. ');
+            const num = parts[0];
+            const newsTitle = parts.slice(1).join('. ');
+
+            html += `<div class="news-item"><div class="news-title">${num}. <a href="#" onclick="return false;">${newsTitle}</a></div>`;
+            inNews = true;
+          } else if (line.startsWith('- **来源**:')) {
+            const source = line.replace('- **来源**:', '').trim();
+            html += `<div class="news-meta"><span class="source">${source}</span>`;
+          } else if (line.startsWith('- **发布时间**:')) {
+            const date = line.replace('- **发布时间**:', '').trim();
+            html += `<span class="date">🕐 ${date}</span>`;
+          } else if (line.startsWith('- **链接**:')) {
+            const linkMatch = line.match(/\[([^\]]+)\]\(([^)]+)\)/);
+            if (linkMatch) {
+              const text = linkMatch[1];
+              const url = linkMatch[2];
+              html += `<a href="${url}" target="_blank" style="color: #667eea; text-decoration: none;">🔗 ${text}</a></span>`;
+            }
+          } else if (line.startsWith('- **摘要**:')) {
+            const desc = line.replace('- **摘要**:', '').trim();
+            html += `<div class="news-description">📝 ${desc}</div>`;
+          }
+        }
+
+        if (inNews) {
+          html += '</div>';
+        }
+
+        contentDiv.innerHTML = `<div class="news-card"><h2>📰 今日共 ${countNews(html)} 条新闻</h2>${html}</div>`;
+
+      } catch (error) {
+        contentDiv.innerHTML = `
+          <div class="error">
+            <p>😢 ${error.message}</p>
+            <p style="font-size: 0.9rem; margin-top: 10px;">请稍后再试，或检查新闻是否已生成</p>
+          </div>
+        `;
+      }
+    }
+
+    function countNews(html) {
+      return (html.match(/class="news-item"/g) || []).length;
+    }
+
+    loadNews();
+  </script>
+</body>
+</html>
